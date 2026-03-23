@@ -79,7 +79,9 @@ venv/bin/python3 smart_indexer.py \
 
 Use `--llm haiku --key "$ANTHROPIC_API_KEY"` if no MiniMax key.
 
-**Timing heads-up to give the user:** indexing takes roughly 1–3 hours per 10,000 songs depending on API speed. Progress is saved after every batch so they can stop and resume without losing work. By default the indexer prints a live `Phase 2 (LLM): N/M (X%)` line — no need to show the user anything manually. Add `--verbose` for per-batch detail.
+**Timing heads-up to give the user:** indexing takes roughly 1–3 hours per 1,000 songs depending on the response time and quality of the LLM model. Progress is saved after every batch so they can stop and resume without losing work. By default the indexer prints a live `Phase 2 (LLM): N/M (X%)` line — no need to show the user anything manually. Add `--verbose` for per-batch detail.
+
+> **Warning:** Playlist generation quality depends directly on how many songs have been enriched. Advise the user to wait until at least 500 songs have been indexed by the LLM before starting the server and using the service. They can monitor progress via the live `Phase 2 (LLM): N/M (X%)` output and resume at any time if they need to pause.
 
 When done, confirm: "Indexed N songs."
 

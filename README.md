@@ -1,6 +1,6 @@
 # PlaylistGen
 
-A local music library server with LLM-powered playlist generation. Point it at your music folder, run the indexer once, and get a natural language playlist generator — accessible via web browser or API.
+LLM-powered playlist generation for your local music library that contains music audio files such as mp3, flac, wma, etc. Integrate this repo with your Agents (e.g., OpenClaw) to enable natural language music discovery and playlist curation through conversation. Point it at your music folder, run the indexer once, and get a natural language playlist generator — accessible via web browser or API.
 
 ---
 
@@ -10,6 +10,52 @@ A local music library server with LLM-powered playlist generation. Point it at y
 - Uses an LLM (MiniMax M2.7 or Claude Haiku) to enrich each song with genre, subgenre, mood, energy, language, region, and usage context
 - Serves a local HTTP server with a search UI and player
 - Accepts natural language prompts ("obscure 80s synth for late night driving") and generates curated playlists using LLM reasoning
+
+---
+
+## OpenClaw Quick Start
+
+The fastest way to get PlaylistGen running is to let your OpenClaw agent handle the entire setup for you.
+
+**Step 1 — Add this repo as a skill**
+
+In OpenClaw, install the PlaylistGen skill by pointing it at this folder:
+
+```
+Install the PlaylistGen skill from /path/to/playlistgen
+```
+
+**Step 2 — Ask the agent to set it up**
+
+Once the skill is loaded, just tell OpenClaw what you need:
+
+```
+Set up PlaylistGen. My music is at /home/user/Music. I have a MiniMax API key: sk-xxxx
+```
+
+The agent will:
+1. Create the virtual environment and install dependencies
+2. Check that `ffprobe` is available (and prompt you to install it if not)
+3. Create `.env` with your music directory and API key
+4. Walk you through `MUSIC_RULES.md` and ask if you want to customize the playlist rules before indexing
+5. Index your music library — this takes roughly 1–3 hours per 1,000 songs depending on your LLM model. Progress is printed live. The agent will advise you to wait until at least 500 songs are enriched before proceeding.
+6. Start the server and confirm it's running
+
+**Step 3 — Generate a playlist**
+
+Once the server is up, ask OpenClaw naturally:
+
+```
+Give me a playlist of obscure 80s synth for late night driving
+```
+
+The agent calls `/api/generate`, receives a player URL, and shares it with you directly.
+
+**Re-indexing after adding new music:**
+
+```
+Re-index my music library
+```
 
 ---
 
@@ -24,7 +70,7 @@ A local music library server with LLM-powered playlist generation. Point it at y
 
 ---
 
-## Setup
+## Manual Setup
 
 ### 1. Clone / copy this folder
 
@@ -66,9 +112,11 @@ source .env
 python3 smart_indexer.py --path "$MUSIC_DIR" --llm minimax --key "$MINIMAX_API_KEY" --db "$DB_PATH"
 ```
 
-**Time estimate:** plan for roughly 1–3 hours per 10,000 songs depending on your LLM API speed. Progress is saved after every batch — you can stop and resume at any time without losing work. The indexer prints a live progress percentage so you can track how far along it is.
+**Time estimate:** indexing takes roughly 1–3 hours per 1,000 songs depending on the response time and quality of your LLM model. Progress is saved after every batch — you can stop and resume at any time without losing work. The indexer prints a live `Phase 2 (LLM): N/M (X%)` progress line so you can track how far along it is.
 
 Add `--verbose` to see per-batch logs and a full stats breakdown at the end.
+
+> **Note:** Playlist generation quality depends directly on how many songs have been enriched. Wait until at least 500 songs have been indexed by the LLM before starting the server and using the service.
 
 ### 5. Start the server
 

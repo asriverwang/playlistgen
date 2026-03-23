@@ -11,7 +11,7 @@ Supported LLM services:
 Usage:
     python3 smart_indexer.py --path /media/Music --llm minimax --key YOUR_KEY
     python3 smart_indexer.py --path /media/Music --llm haiku   --key YOUR_KEY
-    python3 smart_indexer.py --path /media/Music --llm minimax --key YOUR_KEY --db music.db --batch 30
+    python3 smart_indexer.py --path /media/Music --llm minimax --key YOUR_KEY --db music.db --batch 20
     python3 smart_indexer.py --path /media/Music --llm minimax --key YOUR_KEY --force
     python3 smart_indexer.py --path /media/Music --llm minimax --key YOUR_KEY --dry-run
 """
@@ -672,10 +672,10 @@ if __name__ == '__main__':
     parser.add_argument('--key',     help='API key (or set MINIMAX_API_KEY / ANTHROPIC_API_KEY env var)')
     parser.add_argument('--model',   help='Override default model name')
     parser.add_argument('--db',      default='music.db', help='Output SQLite database (default: music.db)')
-    parser.add_argument('--batch',   type=int, default=30, help='Songs per LLM call (default: 30)')
+    parser.add_argument('--batch',   type=int, default=20, help='Songs per LLM call (default: 20)')
     parser.add_argument('--force',   action='store_true', help='Re-index already indexed files')
-    parser.add_argument('--workers', type=int, default=4, help='Parallel LLM workers (default: 2)')
-    parser.add_argument('--timeout', type=int, default=120, help='LLM request timeout in seconds (default: 120)')
+    parser.add_argument('--workers', type=int, default=4, help='Parallel LLM workers (default: 4)')
+    parser.add_argument('--timeout', type=int, default=300, help='LLM request timeout in seconds (default: 300)')
     parser.add_argument('--dry-run', action='store_true', help='Scan and probe without calling LLM or writing DB')
     parser.add_argument('--verbose', action='store_true', help='Show detailed per-batch logs and stats (default: progress % only)')
     args = parser.parse_args()

@@ -9,6 +9,7 @@ import json
 import hashlib
 import time as _time
 import random
+import subprocess
 from http.server import HTTPServer, SimpleHTTPRequestHandler
 from socketserver import ThreadingMixIn
 from urllib.parse import unquote, urlparse, parse_qs
@@ -395,7 +396,37 @@ class MusicHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=MUSIC_DIR, **kwargs)
     
+    def serve_wma_transcoded(self, path):
+        """Transcode WMA to MP3 on-the-fly via ffmpeg (browsers can't play WMA natively)."""
+        if not os.path.exists(path):
+            self.send_error(404)
+            return
+        self.send_response(200)
+        self.send_header('Content-Type', 'audio/mpeg')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        proc = subprocess.Popen(
+            ['ffmpeg', '-i', path, '-f', 'mp3', '-b:a', '192k', '-vn', 'pipe:1'],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL
+        )
+        try:
+            while True:
+                chunk = proc.stdout.read(65536)
+                if not chunk:
+                    break
+                self.wfile.write(chunk)
+        except Exception:
+            pass
+        finally:
+            proc.terminate()
+            proc.wait()
+
     def do_GET(self):
+        # WMA files must be transcoded — browsers don't support them natively
+        if self.path.lower().split('?')[0].endswith('.wma'):
+            self.serve_wma_transcoded(self.translate_path(self.path))
+            return
+
         # Check if it's a range request for audio seeking
         if self.headers.get('Range') and self.path.endswith(('.mp3', '.flac', '.wav', '.m4a', '.ogg', '.wma', '.aac')):
             self.handle_audio_range()

@@ -40,7 +40,8 @@ The agent will:
 3. Create `.env` with your music directory and API key
 4. Walk you through `MUSIC_RULES.md` and ask if you want to customize the playlist rules before indexing
 5. Index your music library — this takes roughly 1–3 hours per 5,000 songs depending on your LLM model. Progress is printed live. The agent will advise you to wait until at least 500 songs are enriched before proceeding.
-6. Start the server and confirm it's running
+6. Tell you where `music.db` is saved — this file holds all your indexed metadata and LLM enrichments. Keep it safe, don't delete it. If you migrate to a new machine or agent, copy this file to avoid re-indexing.
+7. Start the server and confirm it's running
 
 **Step 3 — Generate a playlist**
 

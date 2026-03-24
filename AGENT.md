@@ -10,6 +10,17 @@ PlaylistGen is a local music library server with LLM-powered playlist generation
 
 Work through these steps with the user. Each step requires user input or confirmation before proceeding.
 
+### Step 0 — Install the skill
+
+Clone or install PlaylistGen into the OpenClaw skills directory:
+
+```bash
+git clone https://github.com/asriverwang/playlistgen ~/.openclaw/skills/playlistgen
+cd ~/.openclaw/skills/playlistgen
+```
+
+All subsequent commands assume PlaylistGen is located at `~/.openclaw/skills/playlistgen`.
+
 ### Step 1 — Gather requirements
 
 Ask the user:
@@ -20,7 +31,7 @@ Ask the user:
 ### Step 2 — Create the virtual environment
 
 ```bash
-cd /path/to/playlistgen
+cd ~/.openclaw/skills/playlistgen
 python3 -m venv venv
 venv/bin/pip install requests openai anthropic mutagen
 ```
@@ -91,7 +102,8 @@ Errors, retries, and dropped batches are always printed (even without `--verbose
 
 > **Warning:** Playlist generation quality depends directly on how many songs have been enriched. Advise the user to wait until at least 500 songs have been indexed by the LLM before starting the server and using the service. They can monitor progress via the live `Phase 2 (LLM): N/M (X%)` output and resume at any time if they need to pause.
 
-When done, confirm: "Indexed N songs."
+When done, tell the user:
+- "Indexed N songs. Your music database is saved at `<absolute path to music.db>` — this file contains all your indexed metadata and LLM enrichments. Keep it safe and do not delete it. Indexing costs time and API credits, so this file is valuable. If you migrate to a different machine or agent, copy this file over and point `DB_PATH` to it to avoid re-indexing."
 
 ### Step 6 — Start the server
 

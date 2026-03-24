@@ -178,7 +178,7 @@ Examples (output uses plain tag names, chosen following the selection rules abov
             genre_kw   = {'rock','pop','r&b','hip-hop','electronic','jazz','blues','folk','country','metal','punk','reggae','funk','classical','world','alternative','hardcore','soul','indie','dance','trap','edm','ambient'}
             mood_kw    = {'happy','sad','chill','melancholic','upbeat','dark','brooding','energetic','dreamy','anthemic','uplifting','romantic','playful','reflective','nostalgic','sensual','fiery','intense','confident','relaxing','peaceful','浪漫','悲伤','开心','快乐','忧郁','放松','愉悦','热烈','平静','怀旧','思念'}
             context_kw = {'driving','workout','party','chill','romance','sad','nostalgia','morning','night','summer','rainy day','focus','working out','exercise','gym','running','coding','studying','relaxing','latenight','浪漫','欢快','轻松','夜深','清晨','雨天','通勤','运动','健身','派对'}
-            result = {"genres": [], "subgenres": [], "moods": [], "usage_contexts": [], "themes": []}
+            result = {"genres": [], "subgenres": [], "moods": [], "usage_contexts": []}
             for t in deduped:
                 if t in genre_kw:   result["genres"].append(t.title())
                 elif t in mood_kw: result["moods"].append(t.title())
@@ -559,7 +559,7 @@ class MusicHandler(SimpleHTTPRequestHandler):
         conn = sqlite3.connect(DB_PATH)
         c = conn.cursor()
         
-        sel = 'SELECT path, filename, artist, album, year, title, genre, subgenre, mood, usage_context, theme, energy, duration, language, region, popularity FROM songs'
+        sel = 'SELECT path, filename, artist, album, year, title, genre, subgenre, mood, usage_context, energy, duration, language, region, popularity FROM songs'
         if q:
             search = f'%{q}%'
             c.execute(sel + ' WHERE (title LIKE ? OR artist LIKE ? OR album LIKE ?) AND valid=1 LIMIT 50',
@@ -579,9 +579,9 @@ class MusicHandler(SimpleHTTPRequestHandler):
                 'url':  abs_path[len(MUSIC_DIR):] if abs_path.startswith(MUSIC_DIR) else abs_path.lstrip('/'),
                 'filename': r[1], 'artist': r[2], 'album': r[3], 'year': r[4],
                 'title': r[5] or r[1], 'genre': r[6], 'subgenre': r[7],
-                'mood': r[8], 'usage_context': r[9], 'theme': r[10],
-                'energy': r[11], 'duration': r[12],
-                'language': r[13] or '', 'region': r[14] or '', 'popularity': r[15] or '',
+                'mood': r[8], 'usage_context': r[9],
+                'energy': r[10], 'duration': r[11],
+                'language': r[12] or '', 'region': r[13] or '', 'popularity': r[14] or '',
             })
         conn.close()
         return results
@@ -615,7 +615,7 @@ class MusicHandler(SimpleHTTPRequestHandler):
             for field, weight, values in field_weights:
                 for val in values:
                     search = f'%{val}%'
-                    c.execute(f'''SELECT path, filename, artist, album, year, title, genre, subgenre, mood, usage_context, theme, energy, duration, language, region, popularity
+                    c.execute(f'''SELECT path, filename, artist, album, year, title, genre, subgenre, mood, usage_context, energy, duration, language, region, popularity
                                   FROM songs WHERE {field} LIKE ? AND valid=1''', (search,))
                     for row in c.fetchall():
                         path = row[0]
@@ -636,7 +636,7 @@ class MusicHandler(SimpleHTTPRequestHandler):
                 keywords = ['']
             for kw in keywords:
                 search = f'%{kw}%'
-                c.execute('''SELECT path, filename, artist, album, year, title, genre, subgenre, mood, usage_context, theme, energy, duration, language, region, popularity
+                c.execute('''SELECT path, filename, artist, album, year, title, genre, subgenre, mood, usage_context, energy, duration, language, region, popularity
                              FROM songs
                              WHERE (title LIKE ? OR artist LIKE ? OR album LIKE ?
                                 OR genre LIKE ? OR mood LIKE ? OR usage_context LIKE ?) AND valid=1''',
@@ -658,9 +658,9 @@ class MusicHandler(SimpleHTTPRequestHandler):
                 'url':  p[len(MUSIC_DIR):] if p.startswith(MUSIC_DIR) else p.lstrip('/'),
                 'filename': s[1], 'artist': s[2], 'album': s[3], 'year': s[4],
                 'title': s[5] or s[1], 'genre': s[6], 'subgenre': s[7],
-                'mood': s[8], 'usage_context': s[9], 'theme': s[10],
-                'energy': s[11], 'duration': s[12],
-                'language': s[13] or '', 'region': s[14] or '', 'popularity': s[15] or '',
+                'mood': s[8], 'usage_context': s[9],
+                'energy': s[10], 'duration': s[11],
+                'language': s[12] or '', 'region': s[13] or '', 'popularity': s[14] or '',
             })
 
         response = {'songs': results, 'query': q, 'mood': mood}
@@ -691,7 +691,6 @@ class MusicHandler(SimpleHTTPRequestHandler):
             'subgenres':      dist('subgenre'),
             'moods':          dist('mood'),
             'usage_contexts': dist('usage_context'),
-            'themes':         dist('theme'),
             'energy':         dist('energy'),
             'languages':      dist('language'),
             'regions':        dist('region'),
@@ -733,7 +732,7 @@ class MusicHandler(SimpleHTTPRequestHandler):
 
         def _fetch_rows(cursor, where_clause, args):
             cursor.execute(f'''SELECT path, filename, artist, album, year, title, genre, subgenre,
-                                      mood, usage_context, theme, energy, duration, language, region, popularity
+                                      mood, usage_context, energy, duration, language, region, popularity
                               FROM songs {where_clause}''', args)
             result = []
             for s in cursor.fetchall():
@@ -743,9 +742,9 @@ class MusicHandler(SimpleHTTPRequestHandler):
                     'url':  p[len(MUSIC_DIR):] if p.startswith(MUSIC_DIR) else p.lstrip('/'),
                     'filename': s[1], 'artist': s[2], 'album': s[3], 'year': s[4],
                     'title': s[5] or s[1], 'genre': s[6], 'subgenre': s[7],
-                    'mood': s[8], 'usage_context': s[9], 'theme': s[10],
-                    'energy': s[11], 'duration': s[12],
-                    'language': s[13] or '', 'region': s[14] or '', 'popularity': s[15] or '',
+                    'mood': s[8], 'usage_context': s[9],
+                    'energy': s[10], 'duration': s[11],
+                    'language': s[12] or '', 'region': s[13] or '', 'popularity': s[14] or '',
                 })
             return result
 
@@ -1123,7 +1122,7 @@ Positions are 1-indexed from the candidate list above."""
 
         resolved = []
         for sid in songs_ids:
-            c.execute('SELECT path, filename, artist, album, year, title, genre, subgenre, mood, usage_context, theme, energy, duration, language, region, popularity FROM songs WHERE path = ?', (sid,))
+            c.execute('SELECT path, filename, artist, album, year, title, genre, subgenre, mood, usage_context, energy, duration, language, region, popularity FROM songs WHERE path = ?', (sid,))
             row = c.fetchone()
             if row:
                 p = row[0]
@@ -1132,9 +1131,9 @@ Positions are 1-indexed from the candidate list above."""
                     'url':  p[len(MUSIC_DIR):] if p.startswith(MUSIC_DIR) else p.lstrip('/'),
                     'filename': row[1], 'artist': row[2], 'album': row[3], 'year': row[4],
                     'title': row[5] or row[1], 'genre': row[6], 'subgenre': row[7],
-                    'mood': row[8], 'usage_context': row[9], 'theme': row[10],
-                    'energy': row[11], 'duration': row[12],
-                    'language': row[13] or '', 'region': row[14] or '', 'popularity': row[15] or '',
+                    'mood': row[8], 'usage_context': row[9],
+                    'energy': row[10], 'duration': row[11],
+                    'language': row[12] or '', 'region': row[13] or '', 'popularity': row[14] or '',
                 })
 
         key = hashlib.md5((''.join(songs_ids) + str(_time.time())).encode()).hexdigest()[:8]

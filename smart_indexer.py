@@ -181,21 +181,20 @@ Tasks per song:
    - genre (from: {', '.join(GENRE_LIST)})
    - subgenre (specific, e.g. Grunge, Neo-Soul, Trip Hop, Post-Punk, Stoner Rock)
    - mood (1-3 words, NEVER "Unknown", e.g. {', '.join(MOOD_LIST[:6])})
-   - usage_context (1-3 tags, NEVER "General Listening", from: {', '.join(CONTEXT_LIST)})
-   - theme (1-3 keywords describing lyrical/sonic theme, e.g. "love, heartbreak", "rebellion, youth", "introspection")
+   - usage_context (1-3 tags, NEVER "General Listening", from: {', '.join(CONTEXT_LIST)} — also include lyrical/sonic themes as extra tags when relevant, e.g. "love, romance", "rebellion, driving", "introspection, night")
    - energy (low | medium | high)
    - language (primary vocal language, e.g. English, Mandarin, Japanese, Korean, Cantonese, Spanish, French, Indonesian — use "Instrumental" if no vocals. Note: Chinese songs are often stored with pinyin or romanised artist/title/album names (e.g. "Wo De Xin Li Zhi You Ni", "Jay Chou", "Faye Wong") — recognise these as Mandarin or Cantonese accordingly)
    - region (country or region of origin, e.g. USA, UK, Japan, South Korea, China, Taiwan, Hong Kong, France, Australia. Apply the same pinyin/romanisation awareness for Chinese-language artists)
    - popularity (mainstream | popular | indie | niche | obscure — based on commercial reach and general recognition)
    - track_num (numeric string if identifiable)
 
-Base mood, context, theme, language, region, and popularity on the **specific song**, not the artist's general style.
+Base mood, context, language, region, and popularity on the **specific song**, not the artist's general style.
 
 Songs:
 {chr(10).join(lines)}
 
 Respond with a JSON array only. Each object:
-{{"idx": <int>, "artist": "...", "title": "...", "album": "...", "year": "YYYY", "track_num": "...", "genre": "...", "subgenre": "...", "mood": "...", "usage_context": "...", "theme": "...", "energy": "low|medium|high", "language": "...", "region": "...", "popularity": "mainstream|popular|indie|niche|obscure", "valid": true}}
+{{"idx": <int>, "artist": "...", "title": "...", "album": "...", "year": "YYYY", "track_num": "...", "genre": "...", "subgenre": "...", "mood": "...", "usage_context": "...", "energy": "low|medium|high", "language": "...", "region": "...", "popularity": "mainstream|popular|indie|niche|obscure", "valid": true}}
 
 Always include "idx" and "valid". Omit fields you have no basis to fill."""
 
@@ -323,7 +322,7 @@ def classify_batch(llm, api_key, model, songs, dry_run=False, timeout=120, quiet
 
         enriched = sum(
             1 for r in results.values()
-            if any(r.get(f) for f in ('mood', 'subgenre', 'usage_context', 'theme', 'energy'))
+            if any(r.get(f) for f in ('mood', 'subgenre', 'usage_context', 'energy'))
         )
         if enriched == 0 and results:
             raise ValueError(f"got {len(results)} results but all fields empty")
@@ -416,7 +415,6 @@ def run(path, llm, api_key, model, db_path, batch_size, force, dry_run, workers=
                 'subgenre':      '',
                 'mood':          '',
                 'usage_context': '',
-                'theme':         '',
                 'energy':        '',
                 'duration':      probe.get('duration', 0),
                 'bitrate':       probe.get('bitrate', 0),
@@ -428,9 +426,9 @@ def run(path, llm, api_key, model, db_path, batch_size, force, dry_run, workers=
             }
             conn.execute('''INSERT OR IGNORE INTO songs
                 (path,filename,root_dir,artist,title,album,year,track_num,genre,subgenre,
-                 mood,usage_context,theme,energy,duration,bitrate,codec,sample_rate,channels,valid,indexed_at)
+                 mood,usage_context,energy,duration,bitrate,codec,sample_rate,channels,valid,indexed_at)
                 VALUES (:path,:filename,:root_dir,:artist,:title,:album,:year,:track_num,:genre,:subgenre,
-                        :mood,:usage_context,:theme,:energy,:duration,:bitrate,:codec,:sample_rate,:channels,:valid,:indexed_at)''',
+                        :mood,:usage_context,:energy,:duration,:bitrate,:codec,:sample_rate,:channels,:valid,:indexed_at)''',
                 row)
             pct = (i + 1) / len(files_to_probe) * 100
             print(f"\rPhase 1 (ffprobe): {i+1:,}/{len(files_to_probe):,} ({pct:.1f}%)", end='', flush=True)
@@ -611,7 +609,6 @@ def run(path, llm, api_key, model, db_path, batch_size, force, dry_run, workers=
                         'subgenre':      to_str(r.get('subgenre')),
                         'mood':          norm_mood(r.get('mood')),
                         'usage_context': norm_usage_context(r.get('usage_context')),
-                        'theme':         to_str(r.get('theme')),
                         'energy':        to_str(r.get('energy')).lower(),
                         'language':      to_str(r.get('language')).strip(),
                         'region':        norm_region(r.get('region')),
@@ -627,7 +624,7 @@ def run(path, llm, api_key, model, db_path, batch_size, force, dry_run, workers=
                     conn.execute('''UPDATE songs SET
                         artist=:artist, title=:title, album=:album, year=:year, track_num=:track_num,
                         genre=:genre, subgenre=:subgenre, mood=:mood, usage_context=:usage_context,
-                        theme=:theme, energy=:energy, language=:language, region=:region,
+                        energy=:energy, language=:language, region=:region,
                         popularity=:popularity, valid=:valid, indexed_at=:indexed_at
                         WHERE path=:path''', row)
                     indexed += 1

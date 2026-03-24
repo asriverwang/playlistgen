@@ -1,6 +1,6 @@
 # Music Playlist Generation (PlaylistGen) 
 
-LLM-powered playlist generation for your local music library that contains music audio files such as mp3, flac, m4a, etc. Integrate this repo with your Agents (e.g., OpenClaw) to enable natural language music discovery and playlist curation through conversation. Point it at your music folder, run the indexer once, and get a natural language playlist generator — accessible via web browser or API.
+LLM-powered playlist generation for your local music library that contains music audio files such as mp3, flac, m4a, etc. Integrate this skill with your Agents (e.g., OpenClaw) to enable natural language music discovery and playlist curation through conversation. Point it at your music folder, run the indexer once, and get a natural language playlist generator — accessible via web browser or API.
 
 ---
 

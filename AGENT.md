@@ -74,10 +74,13 @@ venv/bin/python3 smart_indexer.py \
   --llm haiku \
   --key "$ANTHROPIC_API_KEY" \
   --db "${DB_PATH:-music.db}" \
-  --batch 40
+  --batch 40 \
+  --workers 1
 ```
 
-Use `--llm minimax --key "$MINIMAX_API_KEY"` if using MiniMax instead.
+> **Note:** When using haiku, always set `--workers 1`. Haiku is efficient enough for single-worker throughput, but will throw 429 (rate limit) errors if batches are sent in parallel.
+
+Use `--llm minimax --key "$MINIMAX_API_KEY"` if using MiniMax instead (MiniMax supports higher worker counts).
 
 **Timing heads-up to give the user:** indexing takes roughly 1–3 hours per 5,000 songs depending on the response time and quality of the LLM model. Progress is saved after every batch so they can stop and resume without losing work. By default the indexer prints a live progress line with rate, ETA, and error counts:
 ```
@@ -131,7 +134,7 @@ GET http://localhost:5678/api/search?q=radiohead
 
 ```bash
 source .env
-venv/bin/python3 smart_indexer.py --path "$MUSIC_DIR" --llm haiku --key "$ANTHROPIC_API_KEY" --db "${DB_PATH:-music.db}"
+venv/bin/python3 smart_indexer.py --path "$MUSIC_DIR" --llm haiku --key "$ANTHROPIC_API_KEY" --db "${DB_PATH:-music.db}" --workers 1
 ```
 
 Skips already-indexed songs automatically.

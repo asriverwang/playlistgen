@@ -8,7 +8,7 @@ LLM-powered playlist generation for your local music library that contains music
 
 - Scans your local music directory and builds a SQLite database of all songs
 - Extracts basic metadata (title, artist, album, duration, year) from audio tags via ffprobe and file path structure
-- Deep indexing using an LLM (Claude Haiku or MiniMax M2.7) to enrich each song with genre, subgenre, mood, energy, language, region, and usage context
+- Uses an LLM (Claude Haiku or MiniMax M2.7) to enrich each song with genre, subgenre, mood, energy, language, region, and usage context
 - Serves a local HTTP server with a search UI and player
 - Accepts natural language prompts ("obscure 80s synth for late night driving") and generates curated playlists using LLM reasoning
 

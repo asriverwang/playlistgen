@@ -22,7 +22,7 @@ The fastest way to get PlaylistGen running is to let your OpenClaw agent handle 
 In OpenClaw, install the PlaylistGen skill by pointing it at this folder:
 
 ```
-Install the PlaylistGen skill from /path/to/playlistgen
+Install the PlaylistGen skill from https://github.com/asriverwang/playlistgen
 ```
 
 **Step 2 — Ask the agent to set it up**

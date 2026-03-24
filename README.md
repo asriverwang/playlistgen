@@ -1,13 +1,14 @@
-# PlaylistGen
+# Music Playlist Generation (PlaylistGen) 
 
-LLM-powered playlist generation for your local music library that contains music audio files such as mp3, flac, wma, etc. Integrate this repo with your Agents (e.g., OpenClaw) to enable natural language music discovery and playlist curation through conversation. Point it at your music folder, run the indexer once, and get a natural language playlist generator — accessible via web browser or API.
+LLM-powered playlist generation for your local music library that contains music audio files such as mp3, flac, m4a, etc. Integrate this repo with your Agents (e.g., OpenClaw) to enable natural language music discovery and playlist curation through conversation. Point it at your music folder, run the indexer once, and get a natural language playlist generator — accessible via web browser or API.
 
 ---
 
 ## What it does
 
 - Scans your local music directory and builds a SQLite database of all songs
-- Uses an LLM (Claude Haiku or MiniMax M2.7) to enrich each song with genre, subgenre, mood, energy, language, region, and usage context
+- Extracts basic metadata (title, artist, album, duration, year) from audio tags via ffprobe and file path structure
+- Deep indexing using an LLM (Claude Haiku or MiniMax M2.7) to enrich each song with genre, subgenre, mood, energy, language, region, and usage context
 - Serves a local HTTP server with a search UI and player
 - Accepts natural language prompts ("obscure 80s synth for late night driving") and generates curated playlists using LLM reasoning
 
@@ -38,7 +39,7 @@ The agent will:
 2. Check that `ffprobe` is available (and prompt you to install it if not)
 3. Create `.env` with your music directory and API key
 4. Walk you through `MUSIC_RULES.md` and ask if you want to customize the playlist rules before indexing
-5. Index your music library — this takes roughly 1–3 hours per 1,000 songs depending on your LLM model. Progress is printed live. The agent will advise you to wait until at least 500 songs are enriched before proceeding.
+5. Index your music library — this takes roughly 1–3 hours per 5,000 songs depending on your LLM model. Progress is printed live. The agent will advise you to wait until at least 500 songs are enriched before proceeding.
 6. Start the server and confirm it's running
 
 **Step 3 — Generate a playlist**
@@ -109,10 +110,12 @@ This scans your music directory and enriches each song with LLM-generated tags. 
 
 ```bash
 source .env
-python3 smart_indexer.py --path "$MUSIC_DIR" --llm haiku --key "$ANTHROPIC_API_KEY" --db "$DB_PATH"
+python3 smart_indexer.py --path "$MUSIC_DIR" --llm haiku --key "$ANTHROPIC_API_KEY" --db "$DB_PATH" --workers 1
 ```
 
-**Time estimate:** indexing takes roughly 1–3 hours per 1,000 songs depending on the response time and quality of your LLM model. Progress is saved after every batch — you can stop and resume at any time without losing work. The indexer prints a live `Phase 2 (LLM): N/M (X%)` progress line so you can track how far along it is.
+> **Note:** When using Haiku, always set `--workers 1` to avoid 429 rate limit errors.
+
+**Time estimate:** indexing takes roughly 1–3 hours per 5,000 songs depending on the response time and quality of your LLM model. Progress is saved after every batch — you can stop and resume at any time without losing work. The indexer prints a live `Phase 2 (LLM): N/M (X%)` progress line so you can track how far along it is.
 
 Add `--verbose` to see per-batch logs and a full stats breakdown at the end.
 

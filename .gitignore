@@ -1,0 +1,17 @@
+# Environment
+.env
+venv/
+
+# Database
+*.db
+
+# Python
+__pycache__/
+*.pyc
+
+# Generated files
+music_catalog_vocab.json
+playlist_server.log
+
+# OS
+.DS_Store

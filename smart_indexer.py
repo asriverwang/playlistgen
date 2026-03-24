@@ -5,15 +5,15 @@ Scans a directory for audio files, extracts metadata via ffprobe,
 uses an LLM to infer/verify/enrich all fields, and saves to SQLite.
 
 Supported LLM services:
-  minimax   MiniMax-M2.7  (default model, override with --model)
-  haiku     claude-haiku-4-5-20251001
+  haiku     claude-haiku-4-5-20251001  (default, override with --model)
+  minimax   MiniMax-M2.7
 
 Usage:
-    python3 smart_indexer.py --path /media/Music --llm minimax --key YOUR_KEY
     python3 smart_indexer.py --path /media/Music --llm haiku   --key YOUR_KEY
-    python3 smart_indexer.py --path /media/Music --llm minimax --key YOUR_KEY --db music.db --batch 20
-    python3 smart_indexer.py --path /media/Music --llm minimax --key YOUR_KEY --force
-    python3 smart_indexer.py --path /media/Music --llm minimax --key YOUR_KEY --dry-run
+    python3 smart_indexer.py --path /media/Music --llm minimax --key YOUR_KEY
+    python3 smart_indexer.py --path /media/Music --llm haiku   --key YOUR_KEY --db music.db --batch 40
+    python3 smart_indexer.py --path /media/Music --llm haiku   --key YOUR_KEY --force
+    python3 smart_indexer.py --path /media/Music --llm haiku   --key YOUR_KEY --dry-run
 """
 
 import os
@@ -33,13 +33,13 @@ AUDIO_EXTENSIONS = {'.mp3', '.flac', '.wav', '.m4a', '.ogg', '.wma', '.aac', '.o
 
 # ── LLM endpoints ──────────────────────────────────────────────────────────────
 LLM_CONFIGS = {
-    'minimax': {
-        'url': 'https://api.minimaxi.chat/v1/chat/completions',
-        'default_model': 'MiniMax-M2.7',
-    },
     'haiku': {
         'url': 'https://api.anthropic.com/v1/messages',
         'default_model': 'claude-haiku-4-5-20251001',
+    },
+    'minimax': {
+        'url': 'https://api.minimaxi.chat/v1/chat/completions',
+        'default_model': 'MiniMax-M2.7',
     },
 }
 
@@ -200,6 +200,24 @@ Respond with a JSON array only. Each object:
 Always include "idx" and "valid". Omit fields you have no basis to fill."""
 
 
+def _retry_on_429(func):
+    """Decorator that retries on 429 with exponential backoff (5s, 10s, 20s)."""
+    import requests as _req
+    def wrapper(*args, **kwargs):
+        for attempt in range(4):
+            try:
+                return func(*args, **kwargs)
+            except _req.exceptions.HTTPError as e:
+                if e.response is not None and e.response.status_code == 429 and attempt < 3:
+                    wait = 2 ** attempt * 5
+                    print(f"\n    429 rate limited, waiting {wait}s (retry {attempt+1}/3)...")
+                    time.sleep(wait)
+                    continue
+                raise
+    return wrapper
+
+
+@_retry_on_429
 def call_minimax(api_key, model, prompt, timeout=120):
     import requests
     headers = {'Authorization': f'Bearer {api_key}', 'Content-Type': 'application/json'}
@@ -220,6 +238,7 @@ def call_minimax(api_key, model, prompt, timeout=120):
         raise
 
 
+@_retry_on_429
 def call_haiku(api_key, model, prompt):
     import requests
     headers = {
@@ -314,16 +333,17 @@ def classify_batch(llm, api_key, model, songs, dry_run=False, timeout=120, quiet
     except Exception as e:
         elapsed = time.time() - t0
         attempt_label = ['1st', '2nd', '3rd'][min(_depth, 2)]
-        _log(f"    {attempt_label} attempt failed ({len(songs)} songs): {e}")
+        # Always print errors so the agent can see what's going wrong
+        print(f"\n    {attempt_label} attempt failed ({len(songs)} songs, {elapsed:.1f}s): {e}")
         _log(f"    Raw ({len(text)} chars): {repr(text[:300])}")
 
         max_depth = 1 if len(songs) < 4 else 2
         if _depth >= max_depth or len(songs) <= 1:
-            _log(f"    Dropping {len(songs)} song(s) after 3 attempts")
+            print(f"    Dropping {len(songs)} song(s) after retries exhausted")
             return {}, elapsed
 
         mid = len(songs) // 2
-        _log(f"    Splitting {len(songs)} → {mid} + {len(songs) - mid} (attempt {_depth + 2})")
+        print(f"    Splitting {len(songs)} → {mid} + {len(songs) - mid} and retrying...")
         combined = {}
         total_elapsed = elapsed
         for half in [songs[:mid], songs[mid:]]:
@@ -335,7 +355,7 @@ def classify_batch(llm, api_key, model, songs, dry_run=False, timeout=120, quiet
 
 # ── Main ───────────────────────────────────────────────────────────────────────
 
-def run(path, llm, api_key, model, db_path, batch_size, force, dry_run, workers=1, timeout=120, quiet=True):
+def run(path, llm, api_key, model, db_path, batch_size, force, dry_run, workers=4, timeout=120, quiet=True):
     def log(*a, **kw):
         if not quiet:
             print(*a, **kw)
@@ -462,10 +482,14 @@ def run(path, llm, api_key, model, db_path, batch_size, force, dry_run, workers=
     indexed = 0
     llm_enriched = 0
     failed = 0
+    dropped = 0
     timeouts = 0
     ts = int(time.time())
+    phase2_start = time.time()
     durations = []
     recent = []  # last 10 durations (including failures)
+
+    print(f"Phase 2 (LLM): {len(songs):,} songs in {total_batches} batches | {llm}/{model} | workers={workers} | timeout={timeout}s")
 
     def process_batch(batch_num, batch):
         log(f"Batch {batch_num}/{total_batches} ({len(batch)} songs)...")
@@ -484,6 +508,7 @@ def run(path, llm, api_key, model, db_path, batch_size, force, dry_run, workers=
                     recent.pop(0)
             if not results:
                 timeouts += 1
+                dropped += len(batch)
 
             if dry_run:
                 continue
@@ -615,19 +640,27 @@ def run(path, llm, api_key, model, db_path, batch_size, force, dry_run, workers=
             conn.commit()
             completed_batches = sum(1 for f in futures if f.done())
             pct = completed_batches / total_batches * 100
+            wall = time.time() - phase2_start
+            rate = (completed_batches * batch_size) / wall if wall > 0 else 0
+            remaining = (total_batches - completed_batches) * (sum(recent) / len(recent)) / workers if recent else 0
+            eta_str = f" | ETA {int(remaining//60)}m{int(remaining%60):02d}s" if recent else ""
+            avg_str = f" | avg {sum(recent)/len(recent):.1f}s/batch" if recent else ""
+            err_str = f" | {dropped} dropped, {failed} err" if (dropped or failed) else ""
             if quiet:
-                print(f"\rPhase 2 (LLM): {completed_batches}/{total_batches} ({pct:.1f}%)", end='', flush=True)
+                print(f"\rPhase 2 (LLM): {completed_batches}/{total_batches} ({pct:.1f}%) [{rate:.1f} songs/s]{avg_str}{err_str}{eta_str}", end='', flush=True)
             else:
                 timing = f" | last {len(recent)}: avg={sum(recent)/len(recent):.1f}s max={max(recent):.1f}s" if recent else ""
-                print(f"  [{batch_num}/{total_batches}] {indexed:,} saved, {llm_enriched:,} LLM-enriched, {failed:,} failed, {timeouts:,} timeouts{timing}")
+                print(f"  [{batch_num}/{total_batches}] {indexed:,} saved, {llm_enriched:,} enriched, {failed:,} failed, {dropped:,} dropped{timing}{eta_str}")
 
     if quiet:
         print()  # newline after \r progress
 
     # Final summary
     total_db = conn.execute('SELECT COUNT(*) FROM songs').fetchone()[0]
-    print(f"\n=== Done: {indexed:,} saved, {llm_enriched:,} LLM-enriched, {failed:,} failed ===")
-    print(f"DB total: {total_db:,} songs in {db_path}")
+    enriched_db = conn.execute('SELECT COUNT(*) FROM songs WHERE mood != "" AND mood IS NOT NULL').fetchone()[0]
+    wall_total = time.time() - phase2_start
+    print(f"\n=== Done in {int(wall_total//60)}m{int(wall_total%60):02d}s: {indexed:,} saved, {llm_enriched:,} LLM-enriched, {failed:,} failed, {dropped:,} dropped ===")
+    print(f"DB total: {total_db:,} songs ({enriched_db:,} enriched, {total_db - enriched_db:,} remaining) in {db_path}")
 
     if not quiet:
         print("\nTop genres:")
@@ -672,10 +705,10 @@ if __name__ == '__main__':
     parser.add_argument('--key',     help='API key (or set MINIMAX_API_KEY / ANTHROPIC_API_KEY env var)')
     parser.add_argument('--model',   help='Override default model name')
     parser.add_argument('--db',      default='music.db', help='Output SQLite database (default: music.db)')
-    parser.add_argument('--batch',   type=int, default=20, help='Songs per LLM call (default: 20)')
+    parser.add_argument('--batch',   type=int, default=40, help='Songs per LLM call (default: 40)')
     parser.add_argument('--force',   action='store_true', help='Re-index already indexed files')
-    parser.add_argument('--workers', type=int, default=4, help='Parallel LLM workers (default: 4)')
-    parser.add_argument('--timeout', type=int, default=300, help='LLM request timeout in seconds (default: 300)')
+    parser.add_argument('--workers', type=int, default=1, help='Parallel LLM workers (default: 1)')
+    parser.add_argument('--timeout', type=int, default=120, help='LLM request timeout in seconds (default: 120)')
     parser.add_argument('--dry-run', action='store_true', help='Scan and probe without calling LLM or writing DB')
     parser.add_argument('--verbose', action='store_true', help='Show detailed per-batch logs and stats (default: progress % only)')
     args = parser.parse_args()

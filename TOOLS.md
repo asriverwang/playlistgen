@@ -72,7 +72,7 @@ Share only the returned `url`. Do not modify it.
 |---|---|
 | `GET /api/stats` | Library stats: total songs, top artists/albums |
 | `GET /api/search?q=<text>` | Keyword search on title/artist/album (50 results) |
-| `GET /api/interpret?q=<prompt>&provider=minimax\|claude` | LLM prompt → structured tags |
+| `GET /api/interpret?q=<prompt>&provider=claude\|minimax` | LLM prompt → structured tags (default: claude) |
 | `GET /api/catalog/vocab` | Full tag→count dict for all fields |
 | `GET /api/catalog/vocab/refresh` | Rebuild vocab from DB, rewrite catalog JSON file |
 | `GET /` | Web search UI |

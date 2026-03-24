@@ -39,8 +39,8 @@ except Exception:
     _minimax_client = None
     HAS_MINIMAX = False
 
-# Default interpreter provider: "minimax" or "claude"
-_INTERPRET_PROVIDER = os.environ.get("MUSIC_INTERPRET_PROVIDER", "minimax")
+# Default interpreter provider: "claude" or "minimax"
+_INTERPRET_PROVIDER = os.environ.get("MUSIC_INTERPRET_PROVIDER", "claude")
 
 
 _LANG_SCRIPT = {
@@ -60,12 +60,12 @@ def _script_match(song, language):
     return bool(pat.search(text))
 
 
-def interpret_prompt(prompt, provider="minimax"):
+def interpret_prompt(prompt, provider="claude"):
     """Use AI to extract structured music tags from a natural language prompt.
 
     Args:
         prompt: Free-form text — musical or not
-        provider: "minimax" (default) or "claude"
+        provider: "claude" (default) or "minimax"
 
     Returns:
         dict with keys: genres, subgenres, moods, usage_contexts, language, regions
@@ -841,13 +841,13 @@ class MusicHandler(SimpleHTTPRequestHandler):
     def interpret_prompt_api(self, query):
         """AI-powered conversion of free-form text to structured music tags.
         
-        GET /api/interpret?q=<prompt>&provider=minimax|claude
-        
+        GET /api/interpret?q=<prompt>&provider=claude|minimax
+
         Returns: {genres, subgenres, moods, usage_contexts, provider, prompt}
         """
         params = parse_qs(query)
         prompt = params.get('q', [''])[0]
-        provider = params.get('provider', ['minimax'])[0]
+        provider = params.get('provider', [_INTERPRET_PROVIDER])[0]
         
         if not prompt:
             return {'error': 'Missing required param: q'}
@@ -926,22 +926,30 @@ Positions are 1-indexed from the candidate list above."""
 
         user_msg = f'Playlist request: {prompt or "Make a great diverse playlist"}\n\nCandidate songs:\n{song_list}'
 
-        if not HAS_MINIMAX:
-            return {'error': 'MINIMAX_API_KEY not set'}
+        if not HAS_ANTHROPIC and not HAS_MINIMAX:
+            return {'error': 'No API key set (ANTHROPIC_API_KEY or MINIMAX_API_KEY)'}
 
         try:
-            resp = _minimax_client.chat.completions.create(
-                model='MiniMax-M2.7',
-                messages=[
-                    {'role': 'system', 'content': system_msg},
-                    {'role': 'user',   'content': user_msg}
-                ],
-                max_tokens=2048,
-                temperature=0.2
-            )
-            raw = resp.choices[0].message.content.strip()
-            # Strip <think>...</think> reasoning blocks before parsing
-            raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
+            if HAS_ANTHROPIC:
+                resp = _anthropic_client.messages.create(
+                    model="claude-haiku-4-5-20251001",
+                    max_tokens=2048,
+                    messages=[{"role": "user", "content": system_msg + "\n\n" + user_msg}]
+                )
+                raw = resp.content[0].text.strip()
+            else:
+                resp = _minimax_client.chat.completions.create(
+                    model='MiniMax-M2.7',
+                    messages=[
+                        {'role': 'system', 'content': system_msg},
+                        {'role': 'user',   'content': user_msg}
+                    ],
+                    max_tokens=2048,
+                    temperature=0.2
+                )
+                raw = resp.choices[0].message.content.strip()
+                # Strip <think>...</think> reasoning blocks before parsing
+                raw = re.sub(r'<think>.*?</think>', '', raw, flags=re.DOTALL).strip()
 
             match = re.search(r'\{.*\}', raw, re.DOTALL)
             if not match:

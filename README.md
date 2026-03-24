@@ -7,7 +7,7 @@ LLM-powered playlist generation for your local music library that contains music
 ## What it does
 
 - Scans your local music directory and builds a SQLite database of all songs
-- Uses an LLM (MiniMax M2.7 or Claude Haiku) to enrich each song with genre, subgenre, mood, energy, language, region, and usage context
+- Uses an LLM (Claude Haiku or MiniMax M2.7) to enrich each song with genre, subgenre, mood, energy, language, region, and usage context
 - Serves a local HTTP server with a search UI and player
 - Accepts natural language prompts ("obscure 80s synth for late night driving") and generates curated playlists using LLM reasoning
 
@@ -30,7 +30,7 @@ Install the PlaylistGen skill from /path/to/playlistgen
 Once the skill is loaded, just tell OpenClaw what you need:
 
 ```
-Set up PlaylistGen. My music is at /home/user/Music. I have a MiniMax API key: sk-xxxx
+Set up PlaylistGen. My music is at /home/user/Music. I have an Anthropic API key: sk-xxxx
 ```
 
 The agent will:
@@ -65,8 +65,8 @@ Re-index my music library
 - `ffprobe` (part of ffmpeg) — for audio metadata extraction
 - A music directory of MP3/FLAC/M4A/OGG/WAV files
 - One of:
-  - **MiniMax API key** (`MINIMAX_API_KEY`) — recommended, used for both indexing and playlist generation
-  - **Anthropic API key** (`ANTHROPIC_API_KEY`) — Claude Haiku fallback
+  - **Anthropic API key** (`ANTHROPIC_API_KEY`) — recommended, Claude Haiku used for both indexing and playlist generation
+  - **MiniMax API key** (`MINIMAX_API_KEY`) — MiniMax M2.7 fallback
 
 ---
 
@@ -109,7 +109,7 @@ This scans your music directory and enriches each song with LLM-generated tags. 
 
 ```bash
 source .env
-python3 smart_indexer.py --path "$MUSIC_DIR" --llm minimax --key "$MINIMAX_API_KEY" --db "$DB_PATH"
+python3 smart_indexer.py --path "$MUSIC_DIR" --llm haiku --key "$ANTHROPIC_API_KEY" --db "$DB_PATH"
 ```
 
 **Time estimate:** indexing takes roughly 1–3 hours per 1,000 songs depending on the response time and quality of your LLM model. Progress is saved after every batch — you can stop and resume at any time without losing work. The indexer prints a live `Phase 2 (LLM): N/M (X%)` progress line so you can track how far along it is.

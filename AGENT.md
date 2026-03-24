@@ -14,7 +14,7 @@ Work through these steps with the user. Each step requires user input or confirm
 
 Ask the user:
 1. Where is their music directory? (e.g. `/home/user/Music`, `/media/data/Music`)
-2. Do they have a MiniMax API key, Anthropic API key, or both? (MiniMax preferred)
+2. Do they have an Anthropic API key, MiniMax API key, or both? (Anthropic Haiku preferred)
 3. What IP/port should playlist links use? (default `http://localhost:5678` works for local use; set `MUSIC_SERVER_URL` to a LAN/Tailscale IP if they want links to work on other devices)
 
 ### Step 2 — Create the virtual environment
@@ -41,7 +41,7 @@ cp .env.example .env
 
 Required keys:
 - `MUSIC_DIR` — the user's music directory
-- `MINIMAX_API_KEY` and/or `ANTHROPIC_API_KEY`
+- `ANTHROPIC_API_KEY` (recommended) and/or `MINIMAX_API_KEY`
 
 Optional:
 - `MUSIC_SERVER_URL` — public IP for playlist links (e.g. `http://192.168.1.100:5678`)
@@ -71,15 +71,20 @@ This enriches every song with LLM-generated tags (genre, subgenre, mood, energy,
 source .env
 venv/bin/python3 smart_indexer.py \
   --path "$MUSIC_DIR" \
-  --llm minimax \
-  --key "$MINIMAX_API_KEY" \
+  --llm haiku \
+  --key "$ANTHROPIC_API_KEY" \
   --db "${DB_PATH:-music.db}" \
-  --batch 30
+  --batch 40
 ```
 
-Use `--llm haiku --key "$ANTHROPIC_API_KEY"` if no MiniMax key.
+Use `--llm minimax --key "$MINIMAX_API_KEY"` if using MiniMax instead.
 
-**Timing heads-up to give the user:** indexing takes roughly 1–3 hours per 1,000 songs depending on the response time and quality of the LLM model. Progress is saved after every batch so they can stop and resume without losing work. By default the indexer prints a live `Phase 2 (LLM): N/M (X%)` line — no need to show the user anything manually. Add `--verbose` for per-batch detail.
+**Timing heads-up to give the user:** indexing takes roughly 1–3 hours per 5,000 songs depending on the response time and quality of the LLM model. Progress is saved after every batch so they can stop and resume without losing work. By default the indexer prints a live progress line with rate, ETA, and error counts:
+```
+Phase 2 (LLM): 2057 songs in 103 batches | haiku / claude-haiku | workers=1 | timeout=120s
+Phase 2 (LLM): 45/103 (43.7%) [2.3 songs/s] | avg 8.7s/batch | ETA 4m12s
+```
+Errors, retries, and dropped batches are always printed (even without `--verbose`) so the agent can diagnose issues. Add `--verbose` for full per-batch detail including raw LLM response snippets.
 
 > **Warning:** Playlist generation quality depends directly on how many songs have been enriched. Advise the user to wait until at least 500 songs have been indexed by the LLM before starting the server and using the service. They can monitor progress via the live `Phase 2 (LLM): N/M (X%)` output and resume at any time if they need to pause.
 
@@ -126,7 +131,7 @@ GET http://localhost:5678/api/search?q=radiohead
 
 ```bash
 source .env
-venv/bin/python3 smart_indexer.py --path "$MUSIC_DIR" --llm minimax --key "$MINIMAX_API_KEY" --db "${DB_PATH:-music.db}"
+venv/bin/python3 smart_indexer.py --path "$MUSIC_DIR" --llm haiku --key "$ANTHROPIC_API_KEY" --db "${DB_PATH:-music.db}"
 ```
 
 Skips already-indexed songs automatically.

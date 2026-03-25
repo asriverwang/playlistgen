@@ -101,7 +101,7 @@ brew install ffmpeg
 ### 3. Configure environment
 
 ```bash
-cp .env.example .env
+cp env.sample .env
 # Edit .env — set MUSIC_DIR and at least one API key
 ```
 
@@ -165,5 +165,5 @@ POST http://localhost:5678/api/generate
 | `smart_indexer.py` | One-time LLM enrichment of your music library |
 | `MUSIC_RULES.md` | Editable LLM rules for interpretation and curation |
 | `TOOLS.md` | Full API reference |
-| `.env.example` | Environment variable template |
+| `env.sample` | Environment variable template |
 | `start.sh` | Start the server |

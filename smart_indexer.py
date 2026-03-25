@@ -28,6 +28,22 @@ import subprocess
 from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+
+def _load_dotenv():
+    """Load .env from the script's directory into os.environ (no-op if missing)."""
+    env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env')
+    if not os.path.isfile(env_path):
+        return
+    with open(env_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#') or '=' not in line:
+                continue
+            key, _, val = line.partition('=')
+            os.environ.setdefault(key.strip(), val.strip())
+
+_load_dotenv()
+
 # ── Audio formats ──────────────────────────────────────────────────────────────
 AUDIO_EXTENSIONS = {'.mp3', '.flac', '.wav', '.m4a', '.ogg', '.wma', '.aac', '.opus', '.ape', '.alac'}
 

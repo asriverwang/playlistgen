@@ -52,10 +52,10 @@ ffprobe -version
 
 ### Step 3 — Create .env
 
-Copy `env.sample` to `.env` and fill in the values from Step 1:
+Copy `env.sample.md` to `.env` and fill in the values from Step 1:
 
 ```bash
-cp env.sample .env
+cp env.sample.md .env
 ```
 
 Required keys:
